@@ -1,11 +1,123 @@
 //lang::CwC
 #include <stdlib.h> 
-#include <stdio.h>      /* files */
+#include <iostream>
+#include <stdio.h>
 #include <string.h>     /* strcmp */
 
 #include "sorer.h"
 #include "column.h"
 #include "helpers.h"
+
+void int_row(SOR* reader) {
+    int base = 0;
+    for (unsigned int j = 0; j < reader->cols_[0]->len_; ++j) {
+        for (unsigned int i = 0; i < reader->len_; ++i) {
+            char* val = reader->get_value(i, j);
+            base = base + atoi(val);
+            delete[] val;
+        }
+    }
+}
+
+void int_col(SOR* reader) {
+    int base = 0;
+    for (int i = 0; i < reader->len_; ++i) {
+        for (int j = 0; j < reader->cols_[0]->len_; ++j) {
+            char* val = reader->get_value(i, j);
+            base = base + atoi(val);
+            delete[] val;
+        }
+    }
+}
+
+void float_row(SOR* reader) {
+    float base = 0;
+    for (int j = 0; j < reader->cols_[0]->len_; ++j) {
+        for (int i = 0; i < reader->len_; ++i) {
+            char* val = reader->get_value(i, j);
+            base = base + atof(val);
+            delete[] val;
+        }
+    }
+}
+
+void float_col(SOR* reader) {
+    float base = 0;
+    for (int i = 0; i < reader->len_; ++i) {
+        for (int j = 0; j < reader->cols_[0]->len_; ++j) {
+            char* val = reader->get_value(i, j);
+            base = base + atof(val);
+            delete[] val;
+        }
+    }
+}
+
+void bool_col(SOR* reader) {
+    bool base = false;
+    for (int i = 0; i < reader->len_; ++i) {
+        for (int j = 0; j < reader->cols_[0]->len_; ++j) {
+            char* val = reader->get_value(i, j);
+            base = base ^ (strcmp(val, "0") == 0);
+            delete[] val;
+        }
+    }
+}
+
+void bool_row(SOR* reader) {
+    bool base = false;
+    for (int j = 0; j < reader->cols_[0]->len_; ++j) {
+        for (int i = 0; i < reader->len_; ++i) {
+            char* val = reader->get_value(i, j);
+            base = base ^ (strcmp(val, "0") == 0);
+            delete[] val;
+        }
+    }
+}
+
+void string_col(SOR* reader) {
+    int base = 0;
+    for (int i = 0; i < reader->len_; ++i) {
+        for (int j = 0; j < reader->cols_[0]->len_; ++j) {
+            char* val = reader->get_value(i, j);
+            base = base + strlen(val);
+            delete[] val;
+        }
+    }
+}
+
+void string_row(SOR* reader) {
+    int base = 0;
+    for (int j = 0; j < reader->cols_[0]->len_; ++j) {
+        for (int i = 0; i < reader->len_; ++i) {
+            char* val = reader->get_value(i, j);
+            base = base + strlen(val);
+            delete[] val;
+        }
+    }
+}
+
+void benchmark(char* dType, char* pattern, SOR* reader) {
+    if (strcmp(dType, "int") == 0)
+        if (strcmp(pattern, "byrow") == 0)
+            int_row(reader);
+        else if (strcmp(pattern, "bycol") == 0)
+            int_col(reader);
+    else if (strcmp(dType, "float") == 0)
+        if (strcmp(pattern, "byrow") == 0)
+            float_row(reader);
+        else if (strcmp(pattern, "bycol") == 0)
+            float_col(reader);
+    else if (strcmp(dType, "bool") == 0)
+        if (strcmp(pattern, "byrow") == 0)
+            bool_row(reader);
+        else if (strcmp(pattern, "bycol") == 0)
+            bool_col(reader);
+    else if (strcmp(dType, "string") == 0)
+        if (strcmp(pattern, "byrow") == 0)
+            string_row(reader);
+        else if (strcmp(pattern, "bycol") == 0)
+            string_col(reader);     
+}
 
 int main(int argc, char** argv) {
 
@@ -17,6 +129,10 @@ int main(int argc, char** argv) {
     char *file_name;
     unsigned int from, len;
     unsigned int col_arg1, col_arg2;
+
+    char* dType;
+    char* pattern;
+    bool dobenchmark = false;
 
     // if user passes in non integers for places where there should be integers
     // just default the value to 0
@@ -60,6 +176,16 @@ int main(int argc, char** argv) {
             a_missing = 1;
             index+=3;
         }
+        else if (strcmp(argv[index], "-type") == 0) {
+            dType = argv[index + 1];
+            index += 2;
+            dobenchmark = true;
+        }
+        else if (strcmp(argv[index], "-pattern") == 0) {
+            pattern = argv[index + 1];
+            index += 2;
+            dobenchmark = true;
+        }
         else {
             affirm(false, "Invalid input argument");
         }
@@ -68,7 +194,6 @@ int main(int argc, char** argv) {
     affirm(a_file, "Missing file");
     affirm(a_from, "Missing from");
     affirm(a_len, "Missing length");
-    affirm((a_type + a_print + a_missing == 1), "Needs one of the following commands: -print_col_type, -is_missing_idx, -print_col_idx\n");
 
     // opening the file
     FILE *f = fopen(file_name, "r");
@@ -76,6 +201,11 @@ int main(int argc, char** argv) {
 
     SOR* reader = new SOR();
     reader->read(f, from, len);
+
+    if (dobenchmark) {
+        benchmark(dType, pattern, reader);
+        return 0;
+    }
 
     if (a_type) {
         switch (reader->get_col_type(col_arg1)) {
